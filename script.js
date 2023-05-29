@@ -1,69 +1,94 @@
-let btn = document.querySelector("body");
-// let api_key = "04a03760452fdabea07d13c24071c6e3";
+// Titles: https://omdbapi.com/?s=thor&page=1&apikey=fc1fef96
+// details: http://www.omdbapi.com/?i=tt3896198&apikey=fc1fef96
 
-let toggleMenu = document.querySelector(".toggle");
-toggleMenu.addEventListener("click", () => {
-  console.log("clicked");
-  let ul = document.querySelector(".bottomHeader");
-  ul.classList.toggle("show");
-  toggleMenu.classList.toggle("fa-xmark");
-  ul.classList.add("bg");
-});
-let tv = document.getElementById("tv");
-var container = document.getElementsByClassName("container");
-let url;
-let i = 1;
-let api_key = "04a03760452fdabea07d13c24071c6e3";
-url = `https://api.themoviedb.org/3/movie/popular?api_key=${api_key}&language=en-US&page=${i}`;
+const movieSearchBox = document.getElementById('movie-search-box');
+const searchList = document.getElementById('search-list');
+const resultGrid = document.getElementById('result-grid');
 
+// load movies from API
+async function loadMovies(searchTerm){
+    const URL = `https://omdbapi.com/?s=${searchTerm}&page=1&apikey=50435948`;
+    const res = await fetch(`${URL}`);
+    const data = await res.json();
+    // console.log(data.Search);
+    if(data.Response == "True") displayMovieList(data.Search);
+}
 
-  fetchData();
-  let more = document.querySelector("#showMore");
-  more.addEventListener("click", showMore);
+function findMovies(){
+    let searchTerm = (movieSearchBox.value).trim();
+    if(searchTerm.length > 0){
+        searchList.classList.remove('hide-search-list');
+        loadMovies(searchTerm);
+    } else {
+        searchList.classList.add('hide-search-list');
+    }
+}
 
-  function showMore() {
-    url = `https://api.themoviedb.org/3/movie/popular?api_key=${api_key}&language=en-US&page=${i}`;
-    i++;
-    fetchData();
-    console.log(i)
-  }
+function displayMovieList(movies){
+    searchList.innerHTML = "";
+    for(let idx = 0; idx < movies.length; idx++){
+        let movieListItem = document.createElement('div');
+        movieListItem.dataset.id = movies[idx].imdbID; // setting movie id in  data-id
+        movieListItem.classList.add('search-list-item');
+        if(movies[idx].Poster != "N/A")
+            moviePoster = movies[idx].Poster;
+        else 
+            moviePoster = "image_not_found.png";
 
-function fetchData() {
-  fetch(url)
-    .then((response) => {
-      if (!response.ok) {
-        i++;
-        const message = `An error has occured: ${response.status}`;
-        throw new Error(message);
-        console.log(Error(message));
-      }
-      return response.json();
-    })
-    .then((movies) => {
-      let container = document.querySelector(".container");
-      // console.log(movies.results[i].postser_path)
-      console.log(movies);
-      let myLen = movies.results.length;
-      showMovies();
+        movieListItem.innerHTML = `
+        <div class = "search-item-thumbnail">
+            <img src = "${moviePoster}">
+        </div>
+        <div class = "search-item-info">
+            <h3>${movies[idx].Title}</h3>
+            <p>${movies[idx].Year}</p>
+        </div>
+        `;
+        searchList.appendChild(movieListItem);
+    }
+    loadMovieDetails();
+}
 
-      function showMovies() {
-        for (var j = 0; j < myLen; j++) {
-          let movie = movies.results[j];
-          container.innerHTML += `<div class="box">
-      <img src="http://image.tmdb.org/t/p/w500/${movie.poster_path}" alt="img" />
-  <div class="moviesDetails">
-    <div class="leftDetails">
-      <h5>${movie.original_title}</h5>
-      <p>${movie.release_date}</p>
-    </div>
-    <div class="rightDetails rating">${movie.vote_average}</div>
-  </div>
-</div>`;
-        }
-      }
-    })
-    .catch((error) => {
-      error.message; // 'An error has occurred: 404'
-      console.log(error);
+function loadMovieDetails(){
+    const searchListMovies = searchList.querySelectorAll('.search-list-item');
+    searchListMovies.forEach(movie => {
+        movie.addEventListener('click', async () => {
+            // console.log(movie.dataset.id);
+            searchList.classList.add('hide-search-list');
+            movieSearchBox.value = "";
+            const result = await fetch(`http://www.omdbapi.com/?i=${movie.dataset.id}&apikey=50435948`);
+            const movieDetails = await result.json();
+            // console.log(movieDetails);
+            displayMovieDetails(movieDetails);
+        });
     });
 }
+
+function displayMovieDetails(details){
+    resultGrid.innerHTML = `
+    <div class = "movie-poster">
+        <img src = "${(details.Poster != "N/A") ? details.Poster : "image_not_found.png"}" alt = "movie poster">
+    </div>
+    <div class = "movie-info">
+        <h3 class = "movie-title">${details.Title}</h3>
+        <ul class = "movie-misc-info">
+            <li class = "year">Year: ${details.Year}</li>
+            <li class = "rated">Ratings: ${details.Rated}</li>
+            <li class = "released">Released: ${details.Released}</li>
+        </ul>
+        <p class = "genre"><b>Genre:</b> ${details.Genre}</p>
+        <p class = "writer"><b>Writer:</b> ${details.Writer}</p>
+        <p class = "actors"><b>Actors: </b>${details.Actors}</p>
+        <p class = "plot"><b>Plot:</b> ${details.Plot}</p>
+        <p class = "language"><b>Language:</b> ${details.Language}</p>
+        <p class = "awards"><b><i class = "fas fa-award"></i></b> ${details.Awards}</p>
+    </div>
+    `;
+}
+
+
+window.addEventListener('click', (event) => {
+    if(event.target.className != "form-control"){
+        searchList.classList.add('hide-search-list');
+    }
+});
